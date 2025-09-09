@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>教师节专属祝福</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/html-to-image"></script>
+  <meta name="description" content="输入名字即可生成专属教师节贺卡（移动端适配）。" />
+  <style>
+    html,body{height:100%}
+    .glass{background:rgba(255,255,255,.7);backdrop-filter:saturate(1.2) blur(8px)}
+    .container-max{max-width:88rem}
+    .action-bar{position:sticky;bottom:0;left:0;right:0}
+    /* —— 信封视觉 —— */
+    .env-3d{perspective:1200px}
+    .envelope{width:min(92vw,520px);height:300px;background:#fff6ed;border:1px solid #f1ddd0;border-radius:20px;position:relative;box-shadow:0 10px 30px rgba(0,0,0,.05)}
+    .envelope .flap{position:absolute;left:50%;top:0;transform:translateX(-50%);width:0;height:0;border-left:260px solid transparent;border-right:260px solid transparent;border-top:160px solid #f6d9bf;transform-origin:50% 0;transition:transform .6s cubic-bezier(.2,.8,.2,1)}
+    .envelope.open .flap{transform:translateX(-50%) rotateX(180deg)}
+    .stamp{position:absolute;right:18px;top:18px;background:#dbeafe;border:1px dashed #93c5fd;border-radius:6px;padding:6px 8px;font-size:12px;color:#1e3a8a;transform:rotate(8deg)}
+    .postmark{position:absolute;left:18px;bottom:18px;color:#fb923c;font-size:12px;opacity:.8}
+  </style>
+</head>
+<body class="min-h-full bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50">
+  <header id="header" class="px-4 py-6 md:px-8">
+    <h1 class="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
+      <span>🎓 教师节祝福</span>
+      <span class="text-xs md:text-sm font-normal text-zinc-500">输入名字 → 打开信封 → 生成贺卡</span>
+    </h1>
+  </header>
+
+  <main id="layout" class="mx-auto container-max px-4 md:px-8 pb-24 grid grid-cols-1 md:grid-cols-3 gap-6">
+    <!-- 左：编辑区（仅编辑模式显示） -->
+    <section id="leftPanel" class="md:col-span-1 space-y-4">
+      <div id="teacherBlock" class="glass rounded-2xl border p-4 shadow-sm">
+        <label class="block text-sm font-semibold mb-1">老师称呼或名字</label>
+        <input id="teacherInput" class="w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-400" placeholder="如：王老师 / 王小明" />
+      </div>
+
+      <div id="fromBlock" class="glass rounded-2xl border p-4 shadow-sm">
+        <label class="block text-sm font-semibold mb-1">署名（来自谁）</label>
+        <input id="fromInput" class="w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-400" placeholder="如：沈乐" value="信息学院团委 学生会" />
+      </div>
+
+      <div id="toneBlock" class="glass rounded-2xl border p-4 shadow-sm">
+        <label class="block text-sm font-semibold mb-2">祝福风格</label>
+        <select id="toneSelect" class="w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-400">
+          <option value="warm">温情</option>
+          <option value="playful">俏皮</option>
+          <option value="classic">古风</option>
+          <option value="short">简短</option>
+        </select>
+      </div>
+
+      <div class="flex gap-2">
+        <button id="genBtn" class="flex-1 rounded-xl bg-emerald-500 text-white px-4 py-2 font-medium shadow hover:bg-emerald-600">生成祝福</button>
+        <button id="shuffleBtn" class="flex-1 rounded-xl border px-4 py-2 font-medium shadow-sm hover:shadow">换一句</button>
+      </div>
+
+      <div class="flex gap-2">
+        <button id="copyBtn" class="flex-1 rounded-xl border px-4 py-2 font-medium shadow-sm hover:shadow">复制祝福文字</button>
+        <button id="downloadBtn" class="flex-1 rounded-xl bg-teal-600 text-white px-4 py-2 font-medium shadow hover:bg-teal-700">下载 PNG 海报</button>
+      </div>
+
+      <div id="linkBuilder" class="glass rounded-2xl border p-4 shadow-sm">
+        <div class="font-semibold mb-1">生成给老师的专属链接</div>
+        <ol class="list-decimal text-sm text-zinc-600 pl-4 space-y-1">
+          <li>填好 <span class="font-medium">署名</span> 与 <span class="font-medium">风格</span>。</li>
+          <li>点击按钮复制链接（老师打开先看到信封封面，只需输入姓名）。</li>
+        </ol>
+        <div class="mt-3 flex flex-wrap gap-3 items-center">
+          <button id="makeLinkBtn" class="rounded-xl border px-4 py-2 text-sm shadow-sm hover:shadow">复制专属链接</button>
+          <label class="text-xs flex items-center gap-2"><input id="lockSwitch" type="checkbox" class="rounded" checked> 锁定署名/风格</label>
+          <label class="text-xs flex items-center gap-2"><input id="teacherViewSwitch" type="checkbox" class="rounded" checked> 老师仅看信封/贺卡</label>
+        </div>
+        <p class="mt-2 text-xs text-zinc-500 break-all" id="linkOut"></p>
+      </div>
+    </section>
+
+    <!-- 右：预览区 / 老师模式下全宽展示 -->
+    <section id="previewWrap" class="md:col-span-2">
+      <div class="relative">
+        <div class="pointer-events-none absolute -inset-6 -z-10 blur-2xl opacity-70">
+          <div id="bgGrad" class="h-full w-full rounded-[2rem] bg-gradient-to-br from-rose-200 via-amber-200 to-emerald-200"></div>
+        </div>
+
+        <!-- 信封封面（老师首次进入显示） -->
+        <div id="envelopeWrap" class="py-10 md:py-20 flex items-center justify-center">
+          <div class="env-3d">
+            <div id="envelope" class="envelope">
+              <div class="flap"></div>
+              <div class="stamp">致敬杏坛</div>
+              <div class="postmark">TEACHERS' DAY</div>
+              <div class="absolute inset-0 flex flex-col items-center justify-center gap-4 p-6">
+                <div class="text-zinc-700 text-base md:text-lg">请输入您的姓名或称呼</div>
+                <div class="glass rounded-full border shadow px-3 py-1.5 flex items-center gap-2">
+                  <input id="teacherOverlayInput" class="w-44 md:w-72 bg-transparent outline-none text-base md:text-lg" placeholder="如：王老师" />
+                  <button id="overlayApply" class="rounded-full bg-emerald-500 text-white px-4 py-1.5 text-sm md:text-base">开启祝福</button>
+                </div>
+                <div class="text-xs text-zinc-500">输入后将为您打开专属贺卡</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 贺卡主体（老师输入后显示） -->
+        <div id="cardWrap" class="hidden">
+          <div id="card" class="overflow-hidden rounded-[2rem] border bg-white shadow-xl mx-auto" style="width: 960px; max-width: 100%">
+            <div class="relative">
+              <div class="h-24 w-full bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400"></div>
+              <div class="absolute inset-0 flex items-center justify-center">
+                <span class="text-white/95 drop-shadow text-3xl md:text-4xl font-extrabold tracking-wider">教师节快乐</span>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-5">
+              <div class="md:col-span-2 p-8 flex items-center justify-center">
+                <svg viewBox="0 0 300 300" class="w-56 h-56 md:w-72 md:h-72 opacity-90">
+                  <rect x="40" y="40" width="220" height="160" rx="12" fill="#1f2937" />
+                  <rect x="35" y="200" width="230" height="16" rx="4" fill="#d4b08c" />
+                  <g stroke="#fff" stroke-width="2" stroke-linecap="round">
+                    <path d="M70 90c20-10 40 10 60 0 20-10 40 10 60 0" opacity=".8" />
+                    <path d="M70 115h140" opacity=".6" />
+                    <path d="M70 140h120" opacity=".5" />
+                    <path d="M70 165h90" opacity=".4" />
+                    <circle cx="210" cy="165" r="10" fill="none" opacity=".7" />
+                  </g>
+                  <circle cx="120" cy="230" r="12" fill="#ef4444" />
+                  <rect x="118" y="212" width="4" height="6" rx="1" fill="#16a34a" />
+                </svg>
+              </div>
+
+              <div class="md:col-span-3 p-6 md:p-8">
+                <h2 class="text-lg md:text-2xl font-bold tracking-tight"><span id="teacherLabel">亲爱的老师</span>：</h2>
+                <p id="message" class="text-zinc-700 leading-relaxed text-base md:text-lg whitespace-pre-wrap mt-3"></p>
+                <div class="mt-3 text-sm text-zinc-500">— 来自 <span id="fromLabel" class="font-semibold text-zinc-700"></span></div>
+                <div id="chips" class="mt-4 grid grid-cols-2 md:grid-cols-3 gap-2 text-xs text-zinc-500"></div>
+              </div>
+            </div>
+
+            <div class="p-4 md:p-6 flex items-center justify-between text-xs text-zinc-500 border-t bg-zinc-50/60">
+              <span id="cardFoot">祝福卡 • 自动生成</span>
+              <span>Made with ❤️</span>
+            </div>
+          </div>
+
+          <!-- 纯文本预览（编辑模式可见） -->
+          <div id="textPanel" class="mt-4 glass rounded-2xl border p-4">
+            <div class="text-sm font-semibold mb-2">祝福文字（可直接复制发送）</div>
+            <pre id="textOut" class="whitespace-pre-wrap text-sm text-zinc-700"></pre>
+          </div>
+
+          <!-- 移动端操作条（仅编辑模式显示） -->
+          <div id="teacherActionBar" class="action-bar hidden mt-4">
+            <div class="mx-auto max-w-2xl glass rounded-2xl border p-2 flex gap-2">
+              <button id="copyBtnM" class="flex-1 rounded-xl border px-4 py-2 text-sm font-medium shadow-sm">复制祝福</button>
+              <button id="downloadBtnM" class="flex-1 rounded-xl bg-teal-600 text-white px-4 py-2 text-sm font-medium shadow">下载海报</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 hidden">
+    <div class="rounded-full bg-black/80 text-white text-sm px-4 py-2 shadow">已复制到剪贴板</div>
+  </div>
+
+  <script>
+    // —— 开关：是否为老师端（仅看信封/贺卡，无复制下载）——
+    const IS_TEACHER = new URLSearchParams(location.search).get('mode') === 'teacher';
+
+    // ——— 模板 ———
+    const templates = {
+      warm: [
+        "{T}，愿每一束粉笔灰，都开成您心里的小花。{Y}祝您教师节快乐！",
+        "{T}，您用耐心点亮好奇，用坚持托住勇气。{Y}愿每一天都被温柔以待。",
+        "三尺讲台，一片赤诚。{Y}想对{T}说：有您，真好！教师节快乐。",
+        "{T}，答案会被忘记，但您教我的思考会一直发光。{Y}祝您安康喜乐！",
+        "黑白粉笔写不尽您的热爱；{Y}愿时光怜惜{T}的每份付出。",
+        "{T}，一声问候、一个点头，都是给我的底气。{Y}愿您万事胜意。",
+      ],
+      playful: [
+        "{T}，作业我可能会鸽，但对您的敬爱永不迟到！{Y}教师节快乐~",
+        "选择题：谁最会点亮灵感？A.{T} B.{T} C.{T}。标准答案：全选！{Y}",
+        "上课铃是BGM，您是主角光环。{Y}祝{T}每天好运包围~",
+        "{T}，知识我已“Ctrl+S”在心，偶尔也会“Ctrl+Z”复习😉。{Y}",
+        "给{T}递上100分的快乐与好运，{Y}任务打卡！",
+      ],
+      classic: [
+        "桃李不言，下自成蹊。{Y}谨以寸心敬献{T}，祝教师节安康。",
+        "一日为师，终身为范。{Y}祝{T}春晖遍泽，节日吉祥。",
+        "经师易遇，人师难求。{Y}敬祝{T}德艺长春、福安康宁。",
+        "教以人道，化以春风。{Y}愿{T}阖家美满，节序安和。",
+      ],
+      short: [
+        "{T}，教师节快乐！{Y}感恩有您。",
+        "谢谢您，{T}。{Y}祝节日快乐、顺心常在！",
+        "向{T}致礼：教师节安康。{Y}",
+        "敬爱的{T}，节日快乐！{Y}诸事顺遂。",
+      ],
+    };
+
+    const chipsPool = [
+      "📚 感谢您的耐心与守护",
+      "✏️ 三尺讲台，写满光亮",
+      "🌟 桃李不言，下自成蹊",
+      "🍀 愿您日日好运相伴",
+      "🕯️ 点一盏灯，照亮更多孩子",
+      "📖 读万卷书，也念您一程"
+    ];
+
+    const suffixPool = [
+      "今天也要开开心心。",
+      "愿笑口常开，心事都顺。",
+      "愿桃李常开，万事胜意。",
+      "记得多休息，少熬夜。",
+      "愿每天都被温柔以待。",
+      "节日好心情，全年好状态。"
+    ];
+
+    const gradients = {
+      warm: ["from-rose-300 via-amber-200 to-emerald-200","from-rose-200 via-orange-200 to-emerald-100"],
+      playful: ["from-indigo-200 via-sky-200 to-pink-200","from-sky-200 via-fuchsia-200 to-pink-200"],
+      classic: ["from-stone-100 via-amber-100 to-stone-200","from-zinc-100 via-amber-50 to-stone-200"],
+      short: ["from-emerald-100 via-emerald-200 to-teal-200","from-teal-100 via-emerald-100 to-cyan-100"],
+    };
+
+    const EMOJI_POOL = ["🌟","🍀","🧡","📚","🎉","🌈","✨","🎓"];
+
+    // 按老师姓名自动选择祝福风格（教师端无需手动选择）
+    const TONES = ['warm','playful','classic','short'];
+    function toneByName(name){ const h = hashCode(name || '老师'); return TONES[h % TONES.length]; }
+
+    const $ = (id) => document.getElementById(id);
+    const teacherInput = $("teacherInput");
+    const fromInput = $("fromInput");
+    const toneSelect = $("toneSelect");
+    const teacherLabel = $("teacherLabel");
+    const fromLabel = $("fromLabel");
+    const messageEl = $("message");
+    const textOut = $("textOut");
+    const bgGrad = $("bgGrad");
+    const leftPanel = $("leftPanel");
+    const layout = $("layout");
+    const header = $("header");
+    const textPanel = $("textPanel");
+
+    // Envelope & teacher-only elements
+    const envelopeWrap = $("envelopeWrap");
+    const envelope = $("envelope");
+    const teacherOverlayInput = $("teacherOverlayInput");
+    const cardWrap = $("cardWrap");
+    const teacherActionBar = $("teacherActionBar");
+
+    let variant = 0;
+
+    function hashCode(str){
+      let h = 0; for (let i=0;i<str.length;i++){ h = (h<<5) - h + str.charCodeAt(i); h |= 0; } return Math.abs(h);
+    }
+
+    function personalizedVariantByName(name){
+      const h = hashCode(name || '老师');
+      const tone = toneSelect.value || 'warm';
+      const list = templates[tone];
+      // 依据名字生成：句子索引、表情、色带、chips
+      const idx = h % list.length;
+      const emoji = EMOJI_POOL[h % EMOJI_POOL.length];
+      const gradList = gradients[tone] || gradients.warm;
+      const grad = gradList[h % gradList.length];
+      const chipsIdx = [h % chipsPool.length, (h>>3) % chipsPool.length, (h>>5) % chipsPool.length];
+      return { idx, emoji, grad, chipsIdx:[...new Set(chipsIdx)].slice(0,3), suffix: suffixPool[h % suffixPool.length] };
+    }
+
+    function renderMessage() {
+      const tone = toneSelect.value || 'warm';
+      const list = templates[tone];
+      const Traw = (teacherInput.value || '老师').replace(/\s+/g,'');
+      const from = (fromInput.value || '我').replace(/\s+/g,'');
+      const pv = personalizedVariantByName(Traw);
+      const raw = list[pv.idx];
+      const T = Traw;
+      const Y = `${pv.emoji}${from}${pv.emoji}`;
+      const msg = raw.replaceAll('{T}', T).replaceAll('{Y}', Y) + ' ' + pv.suffix;
+
+      teacherLabel.textContent = T.includes('老师') ? T : T + '老师';
+      fromLabel.textContent = from;
+      messageEl.textContent = msg;
+
+      if (textOut) {
+        textOut.textContent = `【${teacherLabel.textContent}】\n${msg}\n— 来自 ${from}`;
+      }
+
+      // 渐变与小贴片
+      bgGrad.className = `h-full w-full rounded-[2rem] bg-gradient-to-br ${pv.grad}`;
+      const chips = document.getElementById('chips');
+      chips.innerHTML = '';
+      pv.chipsIdx.forEach(i=>{
+        const d = document.createElement('div');
+        d.className = 'rounded-lg border p-2';
+        d.textContent = chipsPool[i];
+        chips.appendChild(d);
+      });
+    }
+
+    function copy(text){
+      if (!navigator.clipboard) { showToast('请手动复制'); return Promise.resolve(); }
+      return navigator.clipboard.writeText(text).then(()=>showToast('已复制到剪贴板'));
+    }
+
+    function toPNG(){
+      const node = document.getElementById('card');
+      return htmlToImage.toPng(node, { pixelRatio: 2, cacheBust: true, backgroundColor: 'white' });
+    }
+
+    function showToast(msg){
+      const toast = document.getElementById('toast');
+      toast.firstElementChild.textContent = msg || '已完成';
+      toast.classList.remove('hidden');
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(()=> toast.classList.add('hidden'), 1500);
+    }
+
+    function buildShareLink(lock=true, teacherOnly=true){
+      const url = new URL(window.location.href);
+      url.searchParams.set('tone', toneSelect.value || 'warm');
+      if (fromInput.value) url.searchParams.set('from', fromInput.value); else url.searchParams.delete('from');
+      url.searchParams.delete('n');
+      if (lock) url.searchParams.set('lock','1'); else url.searchParams.delete('lock');
+      if (teacherOnly) url.searchParams.set('mode','teacher'); else url.searchParams.delete('mode');
+      return url.toString();
+    }
+
+    function setLayoutForMode(isTeacher){
+      // 老师模式：隐藏左侧与标题，仅显示信封/贺卡；无复制/下载/纯文本
+      leftPanel.classList.toggle('hidden', isTeacher);
+      header.classList.toggle('hidden', isTeacher);
+      if (isTeacher){
+        layout.className = 'mx-auto container-max px-4 md:px-8 pb-24 grid grid-cols-1 gap-6';
+        const cardFoot = document.getElementById('cardFoot');
+        if (cardFoot) cardFoot.textContent = '祝福卡 • 自动生成';
+        if (textPanel) textPanel.classList.add('hidden');
+        if (teacherActionBar) teacherActionBar.classList.add('hidden');
+      } else {
+        layout.className = 'mx-auto container-max px-4 md:px-8 pb-24 grid grid-cols-1 md:grid-cols-3 gap-6';
+        if (textPanel) textPanel.classList.remove('hidden');
+      }
+    }
+
+    function applyURLParams(){
+      const p = new URLSearchParams(location.search);
+      const n = p.get('n');
+      const from = p.get('from');
+      const tone = p.get('tone');
+      const lock = p.has('lock');
+      const mode = p.get('mode');
+
+      if (from) fromInput.value = decodeURIComponent(from); else if (!fromInput.value) fromInput.value = "信息学院团委 学生会";
+      if (mode !== 'teacher' && tone && ['warm','playful','classic','short'].includes(tone)) toneSelect.value = tone;
+      if (n) teacherInput.value = decodeURIComponent(n);
+
+      setLayoutForMode(mode === 'teacher');
+
+      // 锁定：老师侧不显示配置；并默认只显示信封
+      if (lock) {
+        document.getElementById('fromBlock').classList.add('hidden');
+        document.getElementById('toneBlock').classList.add('hidden');
+        document.getElementById('linkBuilder').classList.add('hidden');
+      }
+
+      // teacher 模式：初始显示信封；填写后才展示贺卡
+      const isTeacher = mode === 'teacher';
+      if (isTeacher) {
+        envelopeWrap.classList.remove('hidden');
+        cardWrap.classList.add('hidden');
+        if (teacherActionBar) teacherActionBar.classList.add('hidden');
+        teacherOverlayInput && teacherOverlayInput.focus && teacherOverlayInput.focus();
+      } else {
+        envelopeWrap.classList.add('hidden');
+        cardWrap.classList.remove('hidden');
+        renderMessage();
+      }
+    }
+
+    // ——— 事件绑定 ———
+    document.getElementById('genBtn')?.addEventListener('click', renderMessage);
+    // 教师端：回车即开启祝福
+    teacherOverlayInput?.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ document.getElementById('overlayApply')?.click(); }});
+    document.getElementById('shuffleBtn')?.addEventListener('click', ()=>{ variant++; renderMessage(); });
+
+    if (!IS_TEACHER) {
+      document.getElementById('copyBtn')?.addEventListener('click', ()=> copy(textOut.textContent));
+      document.getElementById('downloadBtn')?.addEventListener('click', ()=>{
+        toPNG().then(url=>{
+          const a = document.createElement('a');
+          const n = (teacherInput.value || '专属祝福').replace(/\s/g,'');
+          a.download = `教师节祝福_${n}.png`;
+          a.href = url; a.click();
+        }).catch(()=> showToast('导出失败，请更换浏览器重试'))
+      });
+
+      document.getElementById('copyBtnM')?.addEventListener('click', ()=> copy(textOut.textContent));
+      document.getElementById('downloadBtnM')?.addEventListener('click', ()=>{
+        toPNG().then(url=>{ const a = document.createElement('a'); a.download = '教师节祝福.png'; a.href = url; a.click(); })
+        .catch(()=> showToast('导出失败，请更换浏览器重试'))
+      });
+    }
+
+    // 老师输入 → 打开信封 → 显示贺卡（教师端不显示任何复制/下载）
+    document.getElementById('overlayApply')?.addEventListener('click', ()=>{
+      const name = (teacherOverlayInput.value || '').trim();
+      if (!name) { showToast('请先输入称呼'); return; }
+      teacherInput.value = name;
+      // 教师端：根据姓名自动选择祝福风格
+      toneSelect.value = toneByName(name);
+      envelope.classList.add('open');
+      setTimeout(()=>{
+        envelopeWrap.classList.add('hidden');
+        cardWrap.classList.remove('hidden');
+        if (!IS_TEACHER && teacherActionBar) teacherActionBar.classList.remove('hidden');
+        renderMessage();
+      }, 600);
+    });
+
+    // 生成分享链接（带老师模式 + 锁定）
+    document.getElementById('makeLinkBtn')?.addEventListener('click', ()=>{
+      const lock = document.getElementById('lockSwitch').checked;
+      const teacherOnly = document.getElementById('teacherViewSwitch').checked;
+      const link = buildShareLink(lock, teacherOnly);
+      document.getElementById('linkOut').textContent = link;
+      if (navigator.clipboard) navigator.clipboard.writeText(link).then(()=>showToast('已复制链接'));
+      if (navigator.share) navigator.share({ title: '教师节祝福', text: '点开输入名字领取专属贺卡', url: link }).catch(()=>{});
+    });
+
+    // 初始化
+    applyURLParams();
+  </script>
+</body>
+</html>
